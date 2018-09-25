@@ -20,8 +20,12 @@ RUN set -ex; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		libcurl4-gnutls-dev \
+		libfreetype6-dev \
+		libjpeg62-turbo-dev \
+		libpng-dev \
 	; \
 	\
+	docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/; \
 	docker-php-ext-install -j "$(nproc)" \
     opcache \
 		mbstring \
@@ -29,6 +33,7 @@ RUN set -ex; \
 		mysqli \
 		curl \
 		pcntl \
+		gd \
 	; \
 	\
   # reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
@@ -58,6 +63,7 @@ RUN { \
   		echo 'opcache.revalidate_freq=60'; \
   		echo 'opcache.fast_shutdown=1'; \
   		echo 'opcache.enable_cli=1'; \
+		echo 'opcache.validate_timestamps=0'; \
     } > /usr/local/etc/php/conf.d/opcache-recommended.ini
 
 ENV APACHE_DOCUMENT_ROOT /var/www/phabricator/webroot
@@ -70,6 +76,15 @@ RUN { \
   		echo '</VirtualHost>'; \
     } > /etc/apache2/sites-available/000-default.conf
 
+# install pygments
+RUN apt-get update && apt-get install -y --no-install-recommends python-setuptools sqlite3 \
+    && easy_install pygments
+
+# install mysql-client
+RUN apt-get update; \
+	apt-get install -y --no-install-recommends mysql-client; \
+	rm -rf /var/lib/apt/lists/*
+
 COPY ./ /var/www
 
 WORKDIR /var/www
@@ -77,3 +92,11 @@ WORKDIR /var/www
 RUN git submodule update --init --recursive
 
 ENV PATH "$PATH:/var/www/phabricator/bin"
+
+# copy phabricator preamble script
+COPY docker/conf/phabricator/preamble.php /var/www/phabricator/support/preamble.php
+
+# copy and set entrypoint
+COPY docker/bin/entrypoint.sh /usr/bin/entrypoint.sh
+ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
+CMD [ "docker-php-entrypoint", "apache2-foreground" ]

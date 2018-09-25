@@ -1,31 +1,46 @@
 version: '3'
 services:
+  proxy:
+    image: jwilder/nginx-proxy:alpine-0.7.0
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./certs:/etc/nginx/certs
+    networks:
+      - proxy
   phabricator:
     build: ./
-    image: phabricator/phabricator
+    image: blindsteal/phabricator
+    env_file:
+      - docker/env/phabricator.env
+      - docker/env/db.env
     volumes:
-       - config:/var/www/phabricator/conf/local
-    ports:
-       - 8888:80
+       - repos:/var/repo
     links:
-      - database
+      - db
+    networks:
+      - proxy
+      - backend
   daemon:
     build:
       context: ./
       dockerfile: Dockerfile.daemon
-    image: phabricator/daemon
-    volumes:
-       - config:/var/www/phabricator/conf/local
+    image: blindsteal/phabricator_daemon
     links:
-      - database
-  database:
-    image: mariadb:10.2
+      - db
+  db:
+    image: mysql:5.7.23
+    env_file:
+      - docker/env/db.env
     volumes:
-       - db-data:/var/lib/mysql
-    ports:
-      - 3306:3306
-    environment:
-      MYSQL_ROOT_PASSWORD: CHANGEME
+      - db_data:/var/lib/mysql
+    networks:
+      - backend
+networks:
+  backend:
+  proxy:
 volumes:
-  config:
-  db-data:
+  repos:
+  db_data:

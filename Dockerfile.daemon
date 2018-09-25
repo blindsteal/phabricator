@@ -58,6 +58,11 @@ RUN { \
 RUN mkdir -p /var/tmp/phd/log/ \
   && touch /var/tmp/phd/log/daemons.log
 
+# install mysql-client
+RUN apt-get update; \
+	apt-get install -y --no-install-recommends mysql-client; \
+	rm -rf /var/lib/apt/lists/*
+
 COPY ./ /var/www
 
 WORKDIR /var/www
@@ -66,5 +71,7 @@ RUN git submodule update --init --recursive
 
 ENV PATH "$PATH:/var/www/phabricator/bin"
 
-CMD phd start \
-  && tail -f /var/tmp/phd/log/daemons.log
+# copy and set entrypoint
+COPY docker/bin/entrypoint.sh /usr/bin/entrypoint.sh
+ENTRYPOINT [ "/usr/bin/entrypoint.sh" ]
+CMD [ "docker-php-entrypoint", "phd start && tail -f /var/tmp/phd/log/daemons.log" ]
