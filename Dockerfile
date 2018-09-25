@@ -85,6 +85,11 @@ RUN apt-get update; \
 	apt-get install -y --no-install-recommends mysql-client; \
 	rm -rf /var/lib/apt/lists/*
 
+# set php.ini options for phabricator
+RUN { \
+  		echo 'post_max_size=2G'; \
+    } > /usr/local/etc/php/conf.d/phabricator-options.ini
+
 COPY ./ /var/www
 
 WORKDIR /var/www

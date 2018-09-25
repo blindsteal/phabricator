@@ -29,6 +29,7 @@ services:
       - docker/env/db.env
     volumes:
       - db_data:/var/lib/mysql
+      - ./docker/conf/mysql/phabricator.cnf:/etc/mysql/conf.d/phabricator.cnf
     networks:
       - backend
 networks:
