@@ -14,11 +14,20 @@ if [ "$maxTries" -le 0 ]; then
 fi
 
 phabricator_home='/var/www/phabricator'
-phabricator_domain="https://$LETSENCRYPT_HOST"
+phabricator_domain="https://$PHABRICATOR_DOMAIN"
+phabricator_file_domain="https://$PHABRICATOR_FILE_DOMAIN"
 phabricator_repo_path='/var/repo'
 phabricator_tz='Europe/Berlin'
+phabricator_storage='/var/file'
 
-mkdir -p $phabricator_repo_path
+# source apache env so we can get run user and group
+. $APACHE_ENVVARS
+
+mkdir -p "$phabricator_storage"
+chown -R "$APACHE_RUN_USER:$APACHE_RUN_GROUP" "$phabricator_storage"
+mkdir -p "$phabricator_repo_path"
+chown -R "$APACHE_RUN_USER:$APACHE_RUN_GROUP" "$phabricator_repo_path"
+
 cd $phabricator_home
 
 ./bin/config set mysql.user 'root'
@@ -28,6 +37,8 @@ cd $phabricator_home
 ./bin/config set phabricator.base-uri "$phabricator_domain"
 ./bin/config set pygments.enabled 'true'
 ./bin/config set phabricator.timezone "$phabricator_tz"
+./bin/config set storage.local-disk.path "$phabricator_storage"
+./bin/config set security.alternate-file-domain "$phabricator_file_domain"
 ./bin/storage upgrade --force
 
 phd start

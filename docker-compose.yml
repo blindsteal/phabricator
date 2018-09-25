@@ -18,6 +18,7 @@ services:
       - docker/env/db.env
     volumes:
        - repos:/var/repo
+       - files:/var/file
     links:
       - db
     networks:
@@ -36,5 +37,6 @@ networks:
   backend:
   proxy:
 volumes:
+  files:
   repos:
   db_data:
