@@ -23,13 +23,6 @@ services:
     networks:
       - proxy
       - backend
-  daemon:
-    build:
-      context: ./
-      dockerfile: Dockerfile.daemon
-    image: blindsteal/phabricator_daemon
-    links:
-      - db
   db:
     image: mysql:5.7.23
     env_file:

@@ -30,4 +30,6 @@ cd $phabricator_home
 ./bin/config set phabricator.timezone "$phabricator_tz"
 ./bin/storage upgrade --force
 
+phd start
+
 exec "$@"
