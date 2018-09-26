@@ -77,13 +77,81 @@ RUN { \
     } > /etc/apache2/sites-available/000-default.conf
 
 # install pygments
-RUN apt-get update && apt-get install -y --no-install-recommends python-setuptools sqlite3 \
-    && easy_install pygments
+RUN apt-get update; \
+	apt-get install -y --no-install-recommends python-setuptools sqlite3; \
+    easy_install pygments; \
+	rm -rf /var/lib/apt/lists/*
 
 # install mysql-client
 RUN apt-get update; \
 	apt-get install -y --no-install-recommends mysql-client; \
 	rm -rf /var/lib/apt/lists/*
+
+# install openssh and sudo (for git ssh)
+RUN apt-get update; \
+	apt-get install -y --no-install-recommends sudo openssh-server; \
+	rm -rf /var/lib/apt/lists/*
+
+# setup phabricator daemon and vcs user
+ENV PHABRICATOR_VCS_USER git
+ENV PHABRICATOR_DAEMON_USER phabricator
+
+RUN useradd -ms /bin/sh phabricator; \
+	useradd -ms /bin/sh git; \
+	usermod -aG sudo www-data; \
+	usermod -p NP -aG sudo git;
+
+# create sudo permissions file
+RUN { \
+  		echo 'www-data ALL=(phabricator) SETENV: NOPASSWD: /usr/bin/git, /usr/lib/git-core/git, /usr/lib/git-core/git-http-backend'; \
+  		echo 'git ALL=(phabricator) SETENV: NOPASSWD: /usr/bin/git, /usr/lib/git-core/git, /usr/bin/git-upload-pack, /usr/lib/git-core/git-upload-pack, /usr/bin/git-receive-pack, /usr/lib/git-core/git-receive-pack'; \
+    } > /etc/sudoers.d/phabricator
+
+# expose git ssh port
+ENV PHABRICATOR_GIT_PORT 2222
+EXPOSE $PHABRICATOR_GIT_PORT
+
+# create phabricator ssh hook
+RUN mkdir -p /opt/sshd; \
+	{ \
+  		echo '#!/bin/sh'; \
+		echo ''; \
+		echo 'VCSUSER="git"'; \
+		echo 'ROOT="/var/www/phabricator"'; \
+		echo ''; \
+		echo 'if [ "$1" != "$VCSUSER" ];'; \
+		echo 'then'; \
+		echo '  exit 1'; \
+		echo 'fi'; \
+		echo ''; \
+		echo 'exec "$ROOT/bin/ssh-auth" $@'; \
+    } > /opt/sshd/phabricator-ssh-hook.sh; \
+	chown -R root /opt/sshd/; \
+	chown -R root /opt/sshd/phabricator-ssh-hook.sh; \
+	chmod 755 /opt/sshd/phabricator-ssh-hook.sh;
+
+# create phabricator sshd config
+RUN { \
+  		echo 'AuthorizedKeysCommand /opt/sshd/phabricator-ssh-hook.sh'; \
+		echo 'AuthorizedKeysCommandUser git'; \
+		echo 'AllowUsers git'; \
+		echo ''; \
+		echo 'Port 2222'; \
+		echo 'Protocol 2'; \
+		echo 'PermitRootLogin no'; \
+		echo 'AllowAgentForwarding no'; \
+		echo 'AllowTcpForwarding no'; \
+		echo 'PrintMotd no'; \
+		echo 'PrintLastLog no'; \
+		echo 'PasswordAuthentication no'; \
+		echo 'ChallengeResponseAuthentication no'; \
+		echo 'AuthorizedKeysFile none'; \
+		echo ''; \
+		echo 'PidFile /var/run/sshd-phabricator.pid'; \
+    } > /etc/ssh/sshd_config.phabricator;
+
+# fix for sshd started outside of debian init script
+RUN mkdir -p /var/run/sshd
 
 # set php.ini options for phabricator
 RUN { \
@@ -96,7 +164,8 @@ WORKDIR /var/www
 
 RUN git submodule update --init --recursive
 
-ENV PATH "$PATH:/var/www/phabricator/bin"
+# add phabricator and git binaries path
+ENV PATH "$PATH:/var/www/phabricator/bin:/usr/lib/git-core"
 
 # copy phabricator preamble script
 COPY docker/conf/phabricator/preamble.php /var/www/phabricator/support/preamble.php

@@ -13,6 +13,8 @@ services:
   phabricator:
     build: ./
     image: blindsteal/phabricator
+    # use this to debug the entrypoint script inside the container
+    # entrypoint: tail -f /dev/null
     env_file:
       - docker/env/phabricator.env
       - docker/env/db.env
@@ -24,6 +26,8 @@ services:
     networks:
       - proxy
       - backend
+    ports:
+      - 2222:2222
   db:
     image: mysql:5.7.23
     env_file:
