@@ -39,6 +39,13 @@ cd $phabricator_home
 ./bin/config set phabricator.timezone "$phabricator_tz"
 ./bin/config set storage.local-disk.path "$phabricator_storage"
 ./bin/config set security.alternate-file-domain "$phabricator_file_domain"
+
+./bin/config set metamta.default-address "$PHABRICTOR_MAIL_FROM"
+./bin/config set metamta.domain "$phabricator_domain"
+./bin/config set metamta.mail-adapter PhabricatorMailImplementationMailgunAdapter
+./bin/config set mailgun.domain "$phabricator_domain"
+./bin/config set mailgun.api-key "$PHABRICATOR_MAILGUN_API_KEY"
+
 ./bin/storage upgrade --force
 
 phd start
