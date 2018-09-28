@@ -57,6 +57,7 @@ cd $phabricator_home
 ./bin/config set phd.user "$PHABRICATOR_DAEMON_USER"
 ./bin/config set diffusion.ssh-user "$PHABRICATOR_VCS_USER"
 ./bin/config set diffusion.ssh-port "$PHABRICATOR_GIT_PORT"
+./bin/config set phabricator.show-prototypes 'true'
 
 ./bin/storage upgrade --force
 
